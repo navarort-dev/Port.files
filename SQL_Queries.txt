@@ -1,0 +1,173 @@
+
+Yearly Linear Income and Growth Rate:
+with cte_yearly_income
+as (
+select YEAR(sa.InvoiceDate) as 'Years',SUM (sl.Quantity*sl.UnitPrice)as 'IncomePerYear',
+count ( distinct month(sa.InvoiceDate)) as 'NumOfDistinctMonths'
+from Sales.Invoices sa join Sales.InvoiceLines sl
+on sa.InvoiceID=sl.InvoiceID
+group by YEAR(sa.InvoiceDate)
+),
+linear_income 
+as(
+select Years, IncomePerYear, NumOfDistinctMonths,
+case 
+when NumOfDistinctMonths=12
+then IncomePerYear
+else (IncomePerYear/NumOfDistinctMonths)*12
+end as 'YearlyLinearIncome'
+from cte_yearly_income
+),
+growth_rate 
+as(
+select Years, IncomePerYear, NumOfDistinctMonths, YearlyLinearIncome,
+LAG (1,YearlyLinearIncome) over (order by years) as 'PrevYear'
+from linear_income
+)
+select Years, IncomePerYear, NumOfDistinctMonths, YearlyLinearIncome,
+case 
+when PrevYear IS NULL THEN NULL
+else (YearlyLinearIncome - PrevYear) * 1.0 / PrevYear
+end as 'Growth Rate'
+from growth_rate
+order by Years asc
+
+
+5 Top Ranked Customers Per Quarter-According to Revenue:
+with quarter_income
+as (
+select YEAR (sa.InvoiceDate) as 'Years' , DATEPART (QQ, sa.InvoiceDate) as 'Quarter', c.CustomerName, 
+SUM (sl.Quantity*sl.UnitPrice) as 'Income Per Year'
+from Sales.Invoices sa join Sales.InvoiceLines sl
+on sa.InvoiceID=sl.InvoiceID
+join Sales.Customers c
+on c.CustomerID=sa.CustomerID
+where sl.Quantity*sl.UnitPrice>0
+group by YEAR (sa.InvoiceDate), DATEPART (QQ, sa.InvoiceDate), c.CustomerName
+),
+cust_rank 
+as (
+select *, dense_rank () over (partition by quarter, years order by [income per year] desc) as 'rn'
+from quarter_income
+)
+select *
+from cust_rank
+where rn<6
+
+
+10 Most Profitable Products:
+select distinct top 10 sl. StockItemID, w.StockItemName ,
+sum (sl.ExtendedPrice-sl.TaxAmount) as 'Total Profit'
+from Sales.InvoiceLines sl join Sales. CustomerTransactions sc
+on sl. InvoiceID= sc.InvoiceID
+join Warehouse. StockItems w
+on w.StockItemID= sl.StockItemID
+group by sl. StockItemID, w.StockItemName, sl.ExtendedPrice, sl.TaxAmount
+order by [Total Profit]desc
+
+
+Units in Stock that Aren't Expired:
+select ROW_NUMBER () over (order by unitprice desc) as 'Rn', 
+StockItemID, StockItemName,UnitPrice, RecommendedRetailPrice,
+RecommendedRetailPrice-UnitPrice as 'NominalProductProfit', 
+DENSE_RANK () over (order by unitprice desc) as 'DNR'
+from Warehouse. StockItems 
+where ValidTo>GETDATE ()
+
+
+Supplier Name and ID for Units Still in Stock:
+select cast (sup.SupplierID  as nvarchar)+' - '+sup.SupplierName as 'Supplier Details', 
+string_agg(cast (war. StockItemID as nvarchar)+' '+war.StockItemName, ' /' ) as 'Product Details'
+from Purchasing.Suppliers sup join Warehouse.StockItems war
+on sup. SupplierID= war. SupplierID
+group by sup. SupplierID, sup. SupplierName
+
+
+Top 5 Customers and Geographical Locations:
+with cust_spendings
+as
+(
+select s.CustomerID,sum(o.Quantity*(o.UnitPrice+o.TaxRate)) as 'Extended Price')
+from Sales.OrderLines o join Sales.Orders s
+on o.OrderID=s.OrderID
+group by s.CustomerID
+)
+select top 5 c.customerID ,ci.CityName, co.CountryName, co.Continent, co.Region, c.[Extended Price]
+from Application.Countries co join Application.Cities ci
+on co.CountryID=ci.CityID
+join cust_spendings c
+on c.customerID=ci.CityID
+group by c.customerID, ci.CityName, co.CountryName, co.Continent, co.Region, c.[extended price]
+
+
+Yearly Total Orders and Sums:
+with month_total
+as
+(
+select YEAR (inv.InvoiceDate) as 'OrderYear', MONTH (inv.InvoiceDate) as 'OrderMonth',
+SUM (sa.LineProfit) as 'MonthlyTotal'
+from Sales.InvoiceLines sa join Sales.Invoices inv
+on sa.InvoiceID=inv.InvoiceID
+group by rollup (year(inv.InvoiceDate),month(inv.InvoiceDate)) 
+)
+select orderyear, ordermonth, monthlytotal,
+SUM(monthlytotal) over (partition by orderyear order by ordermonth
+rows between unbounded preceding and current row) as 'Cumulative Total'
+from month_total
+order by OrderYear,OrderMonth
+
+
+Total Orders Processed according to Month:
+select [Order Month], [2013],[2014],[2015],[2016]
+from 
+(select MONTH(ss.InvoiceDate) as 'Order Month', YEAR(ss.invoicedate) as 'Year', 
+oo.OrderID
+from Sales.Invoices ss 
+join Sales.OrderLines oo
+on ss.OrderID=oo.OrderID
+group by YEAR(ss.invoicedate),MONTH(ss.InvoiceDate),oo.OrderID ) as netunim
+pivot (count(orderID) for year in ([2013],[2014],[2015],[2016]) ) as piv
+order by [Order Month] asc
+
+Potential 'Churn' Customers:
+with cust_orders 
+as(
+select CustomerID, OrderID, InvoiceDate, LAG (InvoiceDate) over (partition by customerID order by invoicedate)
+as 'PrevOrder'
+from Sales.Invoices
+),
+avg_between_orders
+as(
+select CustomerID, AVG (DATEDIFF(day,PrevOrder,InvoiceDate)) as 'AvgDaysBetweenOrders'
+from cust_orders
+group by customerID
+),
+last_order
+as (
+select CustomerID ,MAX (OrderDate) as 'LastOrderDate'
+from Sales.Orders
+group by CustomerID
+)
+select c.CustomerName, c.CustomerName, las.LastOrderDate, 
+datediff(day,max (las.LastOrderDate),GETDATE ())as 'Days Since Last Order',
+ av.AvgDaysBetweenOrders,
+case 
+when datediff(day,max (las.LastOrderDate),GETDATE ())>av.AvgDaysBetweenOrders*2
+then 'Potential Churn'
+else 'Active'
+end as 'Customer Status'
+order by c. CustomerID asc
+
+
+Unique Customer Sales from Wingtip and Tailspin:
+select cat.CustomerCategoryName, COUNT (cu.CustomerCategoryID) as 'CustomerCount', 
+COUNT (*) as 'TotalCustCount', ((COUNT (cu.CustomerCategoryID)/COUNT (*))*100)+'%' as
+'Distribution Factor'
+from Sales.CustomerCategories cat join Sales.Customers cu
+on cat.CustomerCategoryID=cu.CustomerCategoryID
+where CustomerName in ('Wingtip','Tailspin')
+group by cat.CustomerCategoryName
+order by [Distribution Factor] desc
+
+
+

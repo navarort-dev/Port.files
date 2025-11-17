@@ -1,0 +1,210 @@
+--create database
+create database Apple_Music_UserOverview
+go
+
+--use database
+use Apple_Music_UserOverview
+
+--create tables 
+create table UserProfile (
+UserID int IDENTITY (1,1) NOT NULL Primary Key,
+Username nvarchar (60) NOT NULL,
+AppleID nvarchar (60),
+PhoneNum varchar (30)
+)
+go
+
+create table Subscription(
+SubcriptionID int NOT NULL Primary Key,
+UserID int NOT NULL,
+SubscriptionPlan nvarchar (30) NOT NULL,
+StartDate int,
+PaymentMethod nvarchar (20) default 'Credit Card-One Charge'
+) 
+go
+
+
+create table Playlists (
+PlaylistID nvarchar (100) Primary Key NOT NULL,
+UserID int NOT NULL, 
+Genre nvarchar (30) NOT NULL,
+NumOfSongs int,
+CreationDate nvarchar (40) NOT NULL,
+Duration nvarchar (60)
+)
+go
+
+
+create table FrequentStreams_Song(
+SongID nvarchar (60) NOT NULL Primary Key,
+Artist nvarchar (60) NOT NULL,
+Album nvarchar (60), 
+PlaylistID nvarchar (100) NOT NULL,
+Duration nvarchar (60)
+)
+go 
+
+
+
+create table FrequentStreams_Album(
+AlbumID nvarchar (60) NOT NULL Primary Key,
+Artist nvarchar (60) NOT NULL,
+NumOfSongs int,
+Genre nvarchar (60),
+UserID int NOT NULL
+)
+go 
+
+create table FrequentStreams_Playlist(
+PlaylistName nvarchar (100) NOT NULL Primary Key ,
+PlaylistID nvarchar (100), 
+UserID int NOT NULL, 
+Creator nvarchar (60) NOT NULL,
+Genre nvarchar (50),
+CreationDate nvarchar (40),
+NumOfSongs int NOT NULL
+)
+go 
+
+--build constraints/foreign keys 
+alter table Subscription
+add constraint fk_UserID_subscription
+	Foreign Key (UserID) references UserProfile(UserID)
+go
+
+alter table Playlists
+add constraint fk_UserID_Playlists
+	Foreign Key (UserID) references UserProfile(UserID)
+go
+
+
+alter table FrequentStreams_Song
+add constraint fk_PlaylistID_freqstreams_song
+	Foreign Key (PlaylistID) references Playlists(PlaylistID)
+go
+
+alter table FrequentStreams_Album
+add constraint fk_UserID_freqstreams_album
+	Foreign Key (UserID) references UserProfile(UserID)
+go
+
+alter table FrequentStreams_Playlist
+add constraint fk_PlaylistID_freqstreams_playlist
+	Foreign Key (PlaylistID) references Playlists(PlaylistID)
+go
+
+alter table FrequentStreams_Playlist
+add constraint fk_UserID_freqstreams_playlists
+	Foreign Key (UserID) references UserProfile(UserID)
+go
+
+
+--insert values 
+insert UserProfile (Username, AppleID, PhoneNum) values 
+	('nava_o', 'nava.r.ort@gmail.com', '053-342-7502')
+go
+
+insert Subscription (SubcriptionID, UserID, SubscriptionPlan, StartDate, PaymentMethod) values 
+	(12345, 1, 'Family Plan', '05-19-2019', 'default')
+go
+
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('From the Outback', 1, 'Country', 100, '07-05-2022', '10 hr 3 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Mizrahi', 1, 'Worldwide', 198, '10-10-2023' ,'11 hr 29 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Chill Mode', 1, 'Acoustic', 106, '18-06-23', '5 hr 58 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('My Good Songs', 1, 'Pop', 147, '12-03-2022', '7 hr 56 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Gym', 1, 'Rap', 30, '29-08-2022', '1 hr 45 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Rock Music Rocks', 1, 'Rock', 16, '01-04-2022','59 min')
+go 
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Dati Songs', 1, 'Worldwide', 25, '31-07-2024', '1 hr 29 min')
+go
+insert Playlists (PlaylistID, UserID, Genre, NumOfSongs, CreationDate, Duration) values 
+	('Alternative', 1, 'Alternative', 37, '05-19-2025', '1 hr 56 min')
+go
+
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values
+	('What Are You Listening To?', 'Chris Stapelton', 'What Are You Listening To-Single', 'From the Outback', '00:04:00')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values
+	('Country In The Clouds', 'Dylan Marlowe & Conner Smith', 'Country In The Clouds-Single', 'From the Outback', '00:03:36')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values 
+	('Forever', 'Chris Brown', 'Forever-EP', 'My Good Songs', '4 min 38 sec')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values 
+	('Dont Give Up On Me-Stripped', 'Andy Grammer', 'The Friends and Family Sessions', 'Chill Mode', '00:03:18')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values 
+	('Ten Lanu Simcha', 'Mem', 'Ten Lanu Simcha-Single', 'Dati Songs', '00:02:32')
+go 
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values
+	('Kol Akeba Ltova', 'Ben Tzur', 'Kol Akeba Ltova-Single', 'Dati Songs', '00:02:42')
+go
+
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values
+	('Keep Me', 'Khalid', 'American Teen', 'My Good Songs', '00:04:36')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values 
+	('Back To Friends', 'Sombr','I Barely Know Her', 'Alternative','00:03:19')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values 
+	('Waited', 'TRACES', 'Waited-Single', 'Alternative', '00:02:00')
+go
+
+insert FrequentStreams_Song (SongID, Artist, Album, PlaylistID, Duration) values
+	('All The Stars', 'Kendrick Lamar & SZA', 'Black Panther: The Album', 'Gym', '00:03:52')
+go
+
+
+insert FrequentStreams_Playlist (PlaylistName, PlaylistID, UserID, Creator, Genre, CreationDate, NumOfSongs) values 
+	('Gym', 'Gym', 1, 1, 'Rap', '29-08-2022', 30)
+go 
+
+insert FrequentStreams_Playlist (PlaylistName, PlaylistID, UserID, Creator, Genre, CreationDate, NumOfSongs) values 
+	('Back Porch Country', null, 1, 'Apple Music', 'Country', null, 205)
+go
+
+insert FrequentStreams_Playlist (PlaylistName, PlaylistID, UserID, Creator, Genre, CreationDate, NumOfSongs) values 
+	('Dati Songs', 'Dati Songs', 1, 1, 'Worldwide', '31-07-2024', 25)
+go
+
+insert FrequentStreams_Playlist (PlaylistName, PlaylistID, UserID, Creator, Genre, CreationDate, NumOfSongs) values 
+	('Summa Vibes', null, 1, 'd_ort', 'Pop', null, 75)
+go
+
+
+insert FrequentStreams_Album (AlbumID, Artist, NumOfSongs, Genre, UserID) values 
+	('Coyote Cry', 'Ian Munsick', 10, 'Country', 1)
+go
+
+insert FrequentStreams_Album (AlbumID, Artist, NumOfSongs, Genre, UserID) values 
+	('Disco Biscuits #6 - EP', 'Various Artists', 4, 'House', 1)
+go
+
+insert FrequentStreams_Album (AlbumID, Artist, NumOfSongs, Genre, UserID) values 
+	('One Thing At A Time', 'Morgan Wallen', 37, 'Country', 1)
+go
+
+insert FrequentStreams_Album (AlbumID, Artist, NumOfSongs, Genre, UserID) values 
+	('F1 The Album (Cinematic Edition)', 'Hans Zimmer', 32, 'Soundtrack', 1)
+go
